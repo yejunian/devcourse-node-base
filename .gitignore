@@ -1,6 +1,20 @@
 .DS_Store
 node_modules/
-/app.js
-/demo-*/**/*
 
-!demo-api/youtuber-demo.js
+/app.js
+
+/demo-api/express-demo.js
+/demo-api/http-demo.js
+/demo-api/map-demo.js
+/demo-api/object-api-demo.js
+/demo-api/params-demo.js
+/demo-api/say-demo.js
+/demo-api/test-demo.js
+
+/demo-js/array-demo.js
+/demo-js/function-demo.js
+/demo-js/non-blocking-demo.js
+/demo-js/object-demo.js
+/demo-js/scope-demo.js
+
+/demo-npm/figlet-demo.js
