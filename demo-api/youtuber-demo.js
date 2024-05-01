@@ -34,17 +34,22 @@ class Database {
 
   set(id, record) {
     this._storage.set(id, record);
-    this.size = this._storage.size;
+    this._updateStorageSize();
   }
 
   delete(id) {
     const success = this._storage.delete(id); // 키-값 쌍 삭제에 성공하면 true, 없으면 false
-    this.size = this._storage.size;
+    this._updateStorageSize();
     return success;
   }
 
   clear() {
     this._storage.clear();
+    this._updateStorageSize();
+  }
+
+  _updateStorageSize() {
+    this.size = this._storage.size;
   }
 }
 
@@ -55,6 +60,13 @@ let db = new Database(
 );
 
 app.get('/creators', (req, res) => {
+  if (db.size <= 0) {
+    res.status(404).json({
+      message: '조회할 크리에이터가 하나도 없습니다.',
+    });
+    return;
+  }
+
   res.json(db.getAll());
 });
 
@@ -64,20 +76,31 @@ app.get('/creators/:id', (req, res) => {
   const creator = db.get(id);
 
   if (!creator) {
-    res.json({
+    res.status(404).json({
       message: `${id}번 크리에이터 정보를 찾을 수 없습니다.`,
     });
-  } else {
-    res.json(creator);
+    return;
   }
+
+  res.json(creator);
 });
 
 app.use(express.json());
 app.post('/creators', (req, res) => {
-  const createdID = db.set(db.getNextID(), req.body);
+  const { channelTitle } = req.body ?? {};
 
-  res.json({
-    message: `${db.get(createdID).channelTitle}님, 채널 성장을 응원합니다!`,
+  if (!channelTitle) {
+    res.status(400).json({
+      message: '채널 이름이 없습니다.',
+    });
+    return;
+  }
+
+  const id = db.getNextID();
+  db.set(id, { channelTitle, subscriber: 0, videoCount: 0 });
+
+  res.status(201).json({
+    message: `${db.get(id).channelTitle}님, 채널 성장을 응원합니다!`,
   });
 });
 
@@ -89,32 +112,37 @@ app.delete('/creators/:id', (req, res) => {
 
   const success = db.delete(id);
 
-  let message;
-
-  if (success) {
-    if (subscriber >= 100) {
-      message = `${channelTitle}님, 구독자 ${subscriber}명이 그리워할 거예요.`;
-    } else {
-      message = `${channelTitle}님, 나중에 다시 뵙겠습니다.`;
-    }
-  } else {
-    message = `${id}번 크리에이터 정보를 찾을 수 없습니다.`;
+  if (!success) {
+    res.status(404).json({
+      message: `${id}번 크리에이터 정보를 찾을 수 없습니다.`,
+    });
+    return;
   }
 
-  res.json({ message });
+  if (subscriber >= 100) {
+    res.json({
+      message: `${channelTitle}님, 구독자 ${subscriber}명이 그리워할 거예요.`,
+    });
+  } else {
+    res.json({
+      message: `${channelTitle}님, 나중에 다시 뵙겠습니다.`,
+    });
+  }
 });
 
 app.delete('/creators', (req, res) => {
-  let message;
-
-  if (db.size > 0) {
-    db.clear();
-    message = '모든 크리에이터를 삭제했습니다.';
-  } else {
-    message = '삭제할 크리에이터가 없습니다.';
+  if (db.size <= 0) {
+    res.status(404).json({
+      message: '삭제할 크리에이터가 없습니다.',
+    });
+    return;
   }
 
-  res.json({ message });
+  db.clear();
+
+  res.json({
+    message: '모든 크리에이터를 삭제했습니다.',
+  });
 });
 
 app.put('/creators/:id', (req, res) => {
@@ -122,20 +150,32 @@ app.put('/creators/:id', (req, res) => {
   const { channelTitle } = req.body ?? {};
 
   const oldCreator = db.get(id);
-  let message;
 
   if (!oldCreator) {
-    message = `${id}번 크리에이터 정보를 찾을 수 없습니다.`;
-  } else if (!channelTitle) {
-    message = '새 채널 이름을 입력해야 합니다.';
-  } else if (channelTitle === oldCreator.channelTitle) {
-    message = `새 채널 이름 ${channelTitle}이(가) 현재 채널 이름과 동일합니다.`;
-  } else {
-    const newCreator = { ...oldCreator, channelTitle };
-    db.set(id, newCreator);
-
-    message = `${oldCreator.channelTitle}님, 채널 이름이 ${channelTitle}(으)로 변경되었습니다.`;
+    res.status(404).json({
+      message: `${id}번 크리에이터 정보를 찾을 수 없습니다.`,
+    });
+    return;
   }
 
-  res.json({ message });
+  if (!channelTitle) {
+    res.status(400).json({
+      message: '새 채널 이름이 없습니다.',
+    });
+    return;
+  }
+
+  if (channelTitle === oldCreator.channelTitle) {
+    res.status(400).json({
+      message: `새 채널 이름 ${channelTitle}이(가) 현재 채널 이름과 동일합니다.`,
+    });
+    return;
+  }
+
+  const newCreator = { ...oldCreator, channelTitle };
+  db.set(id, newCreator);
+
+  res.json({
+    message: `${oldCreator.channelTitle}님, 채널 이름이 ${channelTitle}(으)로 변경되었습니다.`,
+  });
 });

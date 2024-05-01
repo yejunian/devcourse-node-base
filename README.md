@@ -1,9 +1,90 @@
-# 프로그래머스 풀스택 데브코스 • 실습 결과물
+# 프로그래머스 풀스택 데브코스 — Express 실습 결과물
 
 > #### 데브코스 수강 정보
 >
 > * 타입스크립트로 함께하는 웹 풀 사이클 개발(React, Node.js) 3기
 > * https://school.programmers.co.kr/learn/courses/22464
+
+---
+
+## 2024-05-01
+
+### if에 긍정 조건 넣기
+
+강의 내용에 따라서 내가 작성한 코드의 부정 조건을 긍정으로 바꿨는데 오히려 읽기 어려워졌다.
+
+```javascript
+app.put('/creators/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { channelTitle } = req.body ?? {};
+
+  const oldCreator = db.get(id);
+  let message;
+
+  // (1) 어제까지 작성한 코드:
+  //     if의 중첩이 없고, 실패 상황을 먼저 처리한다.
+  if (!oldCreator) {
+    message = `${id}번 크리에이터 정보를 찾을 수 없습니다.`;
+  } else if (!channelTitle) {
+    message = '새 채널 이름을 입력해야 합니다.';
+  } else if (channelTitle === oldCreator.channelTitle) {
+    message = `새 채널 이름 ${channelTitle}이(가) 현재 채널 이름과 동일합니다.`;
+  } else {
+    const newCreator = { ...oldCreator, channelTitle };
+    db.set(id, newCreator);
+
+    message = `${oldCreator.channelTitle}님, 채널 이름이 ${channelTitle}(으)로 변경되었습니다.`;
+  }
+
+  res.json({ message });
+});
+```
+
+```javascript
+app.put('/creators/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { channelTitle } = req.body ?? {};
+
+  const oldCreator = db.get(id);
+  let message;
+
+  // (2) if 문의 조건을 긍정문으로 변경한 코드:
+  //     if 3중첩이 발생하고, 성공과 실패가 뒤섞인다.
+  if (oldCreator) {
+    if (channelTitle) {
+      if (channelTitle === oldCreator.channelTitle) {
+        message = `새 채널 이름 ${channelTitle}이(가) 현재 채널 이름과 동일합니다.`;
+      } else {
+        const newCreator = { ...oldCreator, channelTitle };
+        db.set(id, newCreator);
+
+        message = `${oldCreator.channelTitle}님, 채널 이름이 ${channelTitle}(으)로 변경되었습니다.`;
+      }
+    } else {
+      message = '새 채널 이름을 입력해야 합니다.';
+    }
+  } else {
+    message = `${id}번 크리에이터 정보를 찾을 수 없습니다.`;
+  }
+
+  res.json({ message });
+});
+```
+
+[좋은 분기문(if) 작성법](https://redutan.github.io/2016/04/01/good-if)에서는 읽기 좋은 분기문을 작성하는 몇 가지 방법을 소개한다.
+
+* 보호 절(Guard clause): 유효하지 않은 상황에는 해당 지역을 벗어난다. (‘Early return’이라는 키워드가 떠오른다.)
+* `if` - `else` 블록의 순서
+    * 가능한 한 `if`에 긍정 조건을 넣어야 읽기 좋다.
+    * 두 블록 중 간단한 블록을 `if`에 둔다.
+    * 단 보호 절을 적용하는 게 먼저다. (부정 조건을 넣더라도 중첩을 없애는 쪽이 낫다.)
+
+#### 쟁점
+
+> 참고: [[디자인 패턴]Early return pattern이란?](https://woonys.tistory.com/209)
+
+* 종료 지점이 많으면 읽기 어렵다. 특히 긴 함수 여기저기에 `return`이 널부러져 있다면 읽기 어렵다. 이때는 일부를 함수로 추출하여 적당한 크기로 줄여야 한다.
+* 코드 스타일은 주관적이다. 팀에서 약속한 대로...
 
 ---
 
