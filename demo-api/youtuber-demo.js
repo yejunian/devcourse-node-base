@@ -1,7 +1,10 @@
+const dotenv = require('dotenv');
 const express = require('express');
 
+dotenv.config();
+
 const app = express();
-app.listen(3000);
+app.listen(process.env.EXPRESS_PORT);
 
 class Database {
   constructor(...initialData) {
